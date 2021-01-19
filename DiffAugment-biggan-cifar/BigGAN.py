@@ -452,8 +452,9 @@ class G_D(nn.Module):
             [img for img in [G_z, x] if img is not None], 0)
         D_class = torch.cat(
             [label for label in [gy, dy] if label is not None], 0)
-        D_input = DiffAugment(D_input, policy=policy)
-        if CR:
+        D_input = DiffAugment(D_input, policy=policy) # ! do aug on both real and fake
+        
+        if CR: # ! what is this @CR. looks like some augmentation policy
             if CR_augment:
                 x_CR_aug = torch.split(D_input, [G_z.shape[0], x.shape[0]])[1]
                 if CR_augment.startswith('flip,'):
@@ -463,7 +464,9 @@ class G_D(nn.Module):
                 D_input = torch.cat([D_input, x_CR_aug], 0)
             else:
                 D_input = torch.cat([D_input, x], 0)
+            # 
             D_class = torch.cat([D_class, dy], 0)
+            
         # Get Discriminator output
         D_out = self.D(D_input, D_class)
         if G_z is None:

@@ -7,6 +7,8 @@
     Let's go.
 """
 
+# ! use pretrained imagenet 128 for now? 
+
 import os
 import functools
 import math
@@ -47,7 +49,14 @@ def run(config):
     if config['resume'] and not config['load_G_only']:
         print('Skipping initialization for training resumption...')
         config['skip_init'] = True
-    config = utils.update_config_roots(config)
+
+    # config = utils.update_config_roots(config)
+    # ! replace with our own standard BigGAN
+    if (('NF1' in config['dataset']) or ('Isic' in config['dataset'])) and ('hdf5' not in config['dataset']) : 
+        config = utils.update_config_roots(config, folder_name=['weights', 'logs', 'samples']) # ! ignore the "data" otherwise we see "base/data/OurFolder" instead of "base/data"
+    else: 
+        config = utils.update_config_roots(config)
+    
     device = 'cuda'
 
     # Seed RNG
@@ -63,6 +72,8 @@ def run(config):
     model = __import__(config['model'])
     experiment_name = (config['experiment_name'] if config['experiment_name']
                        else utils.name_from_config(config))
+    # ! let's retain default names but add just 1 thing on. 
+    experiment_name = experiment_name + config['experiment_name_suffix']
     print('Experiment name is %s' % experiment_name)
 
     # Next, build the model
