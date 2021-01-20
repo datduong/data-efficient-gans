@@ -118,12 +118,24 @@ def run(config):
                            G_ema if config['ema'] else None,
                            load_optim=(not config['reset_optim']),
                            strict=(not config['reset_optim']),
-                           load_G_only=config['load_G_only'])
+                           load_G_only=config['load_G_only'], 
+                           pretrain=False)
+
+    if config['pretrain']: # ! 
+        print('Loading weights...')
+        utils.load_weights(G, D, state_dict,
+                        'none', experiment_name, 
+                        config['load_weights'] if config['load_weights'] else None,
+                        G_ema if config['ema'] else None, 
+                        load_optim=False, # ! set false so we train with our own nn.Embedding
+                        strict=False, # ! set false so we can add new layers
+                        load_G_only=config['load_G_only'], 
+                        pretrain=config['pretrain']) 
 
     # If parallel, parallelize the GD module
     if config['parallel']:
         GD = nn.DataParallel(GD)
-
+        
     # Prepare loggers for stats; metrics holds test metrics,
     # lmetrics holds any desired training metrics.
     test_metrics_fname = '%s/%s_log.jsonl' % (config['logs_root'],
@@ -145,6 +157,10 @@ def run(config):
     # a full D iteration (regardless of number of D steps and accumulations)
     D_batch_size = (config['batch_size'] * config['num_D_steps']
                     * config['num_D_accumulations'])
+
+    if config['pretrain']: # config['resume'] or 
+        state_dict['itr'] = 0 # ! https://github.com/ajbrock/BigGAN-PyTorch/issues/43
+  
     loaders = utils.get_data_loaders(**{**config, 'batch_size': D_batch_size,
                                         'start_itr': state_dict['itr']})
 
@@ -185,6 +201,11 @@ def run(config):
                 loaders[0], displaytype='s1k' if config['use_multiepoch_sampler'] else 'eta')
         else:
             pbar = tqdm(loaders[0])
+
+        # ! skip last batch explicitly. 
+        number_batch_per_epoch = len ( loaders[0] ) 
+        midpoint = number_batch_per_epoch//2
+    
         acc_metrics = {}
         acc_itrs = 0
         for i, (x, y) in enumerate(pbar):
@@ -198,10 +219,19 @@ def run(config):
                 x, y = x.to(device).half(), y.to(device)
             else:
                 x, y = x.to(device), y.to(device)
-            metrics = train(x, y)
+            
+            # metrics = train(x, y)
+            # ! error here. on the last batch. can hack around with batchsize to evenly split the data, but easier to just skip last batch
+            if i == number_batch_per_epoch-1: # index start 0, so len=2, we stop at 1. 
+                metrics = { 'G_loss': 0, 
+                            'D_loss_real': 0,
+                            'D_loss_fake': 0  }
+            else: 
+                metrics = train(x, y)
+            
             train_log.log(itr=int(state_dict['itr']), **metrics)
 
-            for k, v in metrics.items():
+            for k, v in metrics.items(): # ! they added their own accuracy
                 if k not in acc_metrics:
                     acc_metrics[k] = 0
                 acc_metrics[k] += v
@@ -219,7 +249,8 @@ def run(config):
                                     for key in metrics]), end=' ')
 
             # Save weights and copies as configured at specified interval
-            if not (state_dict['itr'] % config['save_every']):
+            # if epoch>0 and not (state_dict['itr'] % config['save_every']):
+            if (i == number_batch_per_epoch-1) or (i==midpoint) : 
                 if config['G_eval_mode']:
                     print('Switchin G to eval mode...')
                     G.eval()
@@ -229,7 +260,8 @@ def run(config):
                                           state_dict, config, experiment_name)
 
             # Test every specified interval
-            if not (state_dict['itr'] % config['test_every']):
+            # if epoch>0 and not (state_dict['itr'] % config['test_every']):
+            if (i == number_batch_per_epoch-1) or (i==midpoint) : # ! we also save at end of epoch
                 if config['G_eval_mode']:
                     print('Switchin G to eval mode...')
                     G.eval()
@@ -239,21 +271,25 @@ def run(config):
                     acc_metrics[k] = 0
                 acc_itrs = 0
             # Increment the iteration counter
+            
             state_dict['itr'] += 1
-        if config['use_multiepoch_sampler']:
-            break
+        
+        # if config['use_multiepoch_sampler']: # ! why was this added ? 
+        #     break
+        
         # Increment epoch counter at end of epoch
         state_dict['epoch'] += 1
+        
     # Final evaluation
-    if config['G_eval_mode']:
-        print('Switchin G to eval mode...')
-        G.eval()
-        if config['ema']:
-            G_ema.eval()
-    train_fns.save_and_sample(G, D, G_ema, z_, y_, fixed_z, fixed_y,
-                              state_dict, config, experiment_name)
-    train_fns.test(G, D, GD, G_ema, z_, y_, state_dict, config, sample,
-                   get_inception_metrics, experiment_name, test_log, acc_metrics, acc_itrs)
+    # if config['G_eval_mode']:
+    #     print('Switchin G to eval mode...')
+    #     G.eval()
+    #     if config['ema']:
+    #         G_ema.eval()
+    # train_fns.save_and_sample(G, D, G_ema, z_, y_, fixed_z, fixed_y,
+    #                           state_dict, config, experiment_name)
+    # train_fns.test(G, D, GD, G_ema, z_, y_, state_dict, config, sample,
+    #                get_inception_metrics, experiment_name, test_log, acc_metrics, acc_itrs)
 
 
 def main():

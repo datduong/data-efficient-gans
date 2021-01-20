@@ -110,6 +110,9 @@ def prepare_parser():
         '--z_var', type=float, default=1.0,
         help='Noise variance: %(default)s)')
     parser.add_argument(
+        '--z_var_scaler', type=float, default=1.0, # ! increase randomness in sampling
+        help='Mult to noise variance z_var: %(default)s)') 
+    parser.add_argument(
         '--hier', action='store_true', default=False,
         help='Use hierarchical z in G? (default: %(default)s)')
     parser.add_argument(
@@ -274,6 +277,9 @@ def prepare_parser():
         '--weights_root', type=str, default='weights',
         help='Default location to store weights (default: %(default)s)')
     parser.add_argument(
+        '--pretrain', type=str, default='', # ! path to load pretrained imagenet model
+        help='Default location where pretrain weights are (default: %(default)s)') 
+    parser.add_argument(
         '--logs_root', type=str, default='logs',
         help='Default location to store logs (default: %(default)s)')
     parser.add_argument(
@@ -291,6 +297,10 @@ def prepare_parser():
         '--experiment_name', type=str, default='',
         help='Optionally override the automatic experiment naming with this arg. '
         '(default: %(default)s)')
+    parser.add_argument(
+    '--experiment_name_suffix', type=str, default='', # ! 
+    help='Add our own name suff to the automatic experiment naming with this arg. '
+         '(default: %(default)s)')
     parser.add_argument(
         '--config_from_name', action='store_true', default=False,
         help='Use a hash of the experiment name instead of the full config '
@@ -437,28 +447,34 @@ dset_dict = {'I32': dset.ImageFolder, 'I64': dset.ImageFolder,
              'I128': dset.ImageFolder, 'I256': dset.ImageFolder,
              'I32_hdf5': dset.ILSVRC_HDF5, 'I64_hdf5': dset.ILSVRC_HDF5,
              'I128_hdf5': dset.ILSVRC_HDF5, 'I256_hdf5': dset.ILSVRC_HDF5,
-             'C10': dset.CIFAR10, 'C100': dset.CIFAR100}
+             'C10': dset.CIFAR10, 'C100': dset.CIFAR100,
+             'NF1BeforeAfter': dset.ImageFolder, 'NF1BeforeAfter_hdf5': dset.ILSVRC_HDF5}
 imsize_dict = {'I32': 32, 'I32_hdf5': 32,
                'I64': 64, 'I64_hdf5': 64,
                'I128': 128, 'I128_hdf5': 128,
                'I256': 256, 'I256_hdf5': 256,
-               'C10': 32, 'C100': 32}
+               'C10': 32, 'C100': 32,
+               'NF1BeforeAfter': 128, 'NF1BeforeAfter_hdf5': 128}
 root_dict = {'I32': 'train', 'I32_hdf5': 'ILSVRC32.hdf5',
              'I64': 'train', 'I64_hdf5': 'ILSVRC64.hdf5',
              'I128': 'train', 'I128_hdf5': 'ILSVRC128.hdf5',
              'I256': 'train', 'I256_hdf5': 'ILSVRC256.hdf5',
-             'C10': 'cifar', 'C100': 'cifar'}
+             'C10': 'cifar', 'C100': 'cifar',
+             'NF1BeforeAfter': 'NF1BeforeAfter25Img', 'NF1BeforeAfter_hdf5': 'ILSVRC128.hdf5'}
 nclass_dict = {'I32': 1000, 'I32_hdf5': 1000,
                'I64': 1000, 'I64_hdf5': 1000,
                'I128': 1000, 'I128_hdf5': 1000,
                'I256': 1000, 'I256_hdf5': 1000,
-               'C10': 10, 'C100': 100}
+               'C10': 10, 'C100': 100,
+               'NF1BeforeAfter': 2, 'NF1BeforeAfter_hdf5': 2 # ! 2 labels for before and after
+               }
 # Number of classes to put per sample sheet
 classes_per_sheet_dict = {'I32': 50, 'I32_hdf5': 50,
                           'I64': 50, 'I64_hdf5': 50,
                           'I128': 20, 'I128_hdf5': 20,
                           'I256': 20, 'I256_hdf5': 20,
-                          'C10': 10, 'C100': 100}
+                          'C10': 10, 'C100': 100,
+                          'NF1BeforeAfter': 2, 'NF1BeforeAfter_hdf5': 2}
 activation_dict = {'inplace_relu': nn.ReLU(inplace=True),
                    'relu': nn.ReLU(inplace=False),
                    'ir': nn.ReLU(inplace=True), }
@@ -587,9 +603,13 @@ def get_data_loaders(dataset, data_root=None, mirror_augment=False, batch_size=6
             print('Data will not be augmented...')
             train_transform = []
             # train_transform = [transforms.Resize(image_size), transforms.CenterCrop]
+        # below are used regardless of @mirror_augment
         train_transform = transforms.Compose(train_transform + [
+            transforms.Resize((image_size,image_size)), # ! add this 
             transforms.ToTensor(),
             transforms.Normalize(norm_mean, norm_std)])
+
+    #
     train_set = which_dataset(root=data_root, transform=train_transform, seed=seed,
                               load_in_mem=load_in_mem, num_samples=num_samples, train=train, **dataset_kwargs)
 
@@ -621,12 +641,13 @@ def seed_rng(seed):
 
 # Utility to peg all roots to a base root
 # If a base root folder is provided, peg all other root folders to it.
-def update_config_roots(config):
-    if config['base_root']:
-        print('Pegging all root folders to base root %s' % config['base_root'])
-        for key in ['data', 'weights', 'logs', 'samples']:
-            config['%s_root' % key] = '%s/%s' % (config['base_root'], key)
-    return config
+def update_config_roots(config, folder_name=['data', 'weights', 'logs', 'samples']):
+  if config['base_root']:
+    print('Pegging all root folders to base root %s' % config['base_root'])
+    for key in folder_name:
+      # ! this add "data" into the root, so we will need to move everything into the "data" folder ?? may not be great for us.
+      config['%s_root' % key] = '%s/%s' % (config['base_root'], key)
+  return config
 
 
 # Utility to prepare root folders if they don't exist; parent folder must exist
@@ -739,37 +760,61 @@ def save_weights(G, D, state_dict, weights_root, experiment_name,
 
 # Load a model's weights, optimizer, and the state_dict
 def load_weights(G, D, state_dict, weights_root, experiment_name,
-                 name_suffix=None, G_ema=None, strict=True, load_optim=True, load_G_only=False, load_ema=True):
-    root = '/'.join([weights_root, experiment_name])
+                 name_suffix=None, G_ema=None, strict=True, load_optim=True, load_G_only=False, load_ema=True, pretrain=False):
+
+    if pretrain: 
+        root = pretrain # ! load in a fixed pretrained weight, so we don't have to copy
+    else: 
+        root = '/'.join([weights_root, experiment_name])
+
     if name_suffix:
-        print('Loading %s weights from %s...' % (name_suffix, root))
+        print('\nLoading %s weights from %s...\n' % (name_suffix, root))
     else:
-        print('Loading weights from %s...' % root)
+        print('\nLoading weights from %s...\n' % root)
+        
     if G is not None:
-        G.load_state_dict(
-            torch.load('%s/%s.pth' %
-                        (root, join_strings('_', ['G', name_suffix]))),
-            strict=strict)
+        # for param_tensor in G.state_dict():
+        #   print(param_tensor, "\tG\t", G.state_dict()[param_tensor].size())
+        # ! 
+        G_state_dict = torch.load('%s/%s.pth' % (root, join_strings('_', ['G', name_suffix])))
+        try: 
+            G.load_state_dict( G_state_dict, strict=strict)
+        except: 
+            temp = {k:v for k,v in G_state_dict.items() if 'shared.' not in k} # ! load this to avoid label mismatch
+            G.load_state_dict( temp, strict=strict )
+        # !
         if load_optim:
             G.optim.load_state_dict(
                 torch.load('%s/%s.pth' % (root, join_strings('_', ['G_optim', name_suffix]))))
+      
     if D is not None and not load_G_only:
-        D.load_state_dict(
-            torch.load('%s/%s.pth' %
-                       (root, join_strings('_', ['D', name_suffix]))),
-            strict=strict)
+        # ! 
+        D_state_dict = torch.load('%s/%s.pth' % (root, join_strings('_', ['D', name_suffix])))
+        try: 
+            D.load_state_dict( D_state_dict, strict=strict)
+        except: 
+            temp = {k:v for k,v in D_state_dict.items() if 'embed.' not in k}
+            D.load_state_dict( temp, strict=strict )
+        # !
         if load_optim:
             D.optim.load_state_dict(
                 torch.load('%s/%s.pth' % (root, join_strings('_', ['D_optim', name_suffix]))))
+    
     # Load state dict
     for item in state_dict:
         state_dict[item] = torch.load(
             '%s/%s.pth' % (root, join_strings('_', ['state_dict', name_suffix])))[item]
+        
     if G_ema is not None:
-        G_ema.load_state_dict(
-            torch.load('%s/%s.pth' % (root, join_strings('_',
-                                                         ['G_ema' if load_ema else 'G', name_suffix]))),
-            strict=strict)
+        try: 
+            G_ema.load_state_dict(
+                torch.load('%s/%s.pth' % (root, join_strings('_',
+                                                            ['G_ema' if load_ema else 'G', name_suffix]))),
+                strict=strict)
+        except: 
+            G_ema_state_dict = torch.load('%s/%s.pth' % (root, join_strings('_', ['G_ema' if load_ema else 'G', name_suffix]))) 
+            temp = {k:v for k,v in G_ema_state_dict.items() if 'shared.' not in k} # ! load this to avoid label mismatch
+            G_ema.load_state_dict( temp, strict=strict )
 
 
 ''' MetricsLogger originally stolen from VoxNet source code.
@@ -962,25 +1007,56 @@ def interp(x0, x1, num_midpoints):
 # Supports full, class-wise and intra-class interpolation
 def interp_sheet(G, num_per_sheet, num_midpoints, num_classes, parallel,
                  samples_root, experiment_name, folder_number, sheet_number=0,
-                 fix_z=False, fix_y=False, device='cuda'):
+                 fix_z=False, fix_y=False, device='cuda', z_var=1, Y_sample=None, Y_pair=None, z_var_scaler=1):
+
+    # ! edit this function to print labels, and use z-sampler instead of torch.randn
+    scaler = np.sqrt(z_var * z_var_scaler) # ! scale up the variance, so we have more variations
+  
     # Prepare zs and ys
-    if fix_z:  # If fix Z, only sample 1 z per row
-        zs = torch.randn(num_per_sheet, 1, G.dim_z, device=device)
+    # ! scale @zs by the variance otherwise it is just a N(0,1) from the torch.randn
+    # Prepare zs and ys
+    if fix_z: # If fix Z, only sample 1 z per row
+        zs = torch.randn(num_per_sheet, 1, G.dim_z, device=device) * scaler # ! cx ~ N(0, c^2 var(x))
         zs = zs.repeat(1, num_midpoints + 2, 1).view(-1, G.dim_z)
     else:
-        zs = interp(torch.randn(num_per_sheet, 1, G.dim_z, device=device),
-                    torch.randn(num_per_sheet, 1, G.dim_z, device=device),
+        zs = interp(torch.randn(num_per_sheet, 1, G.dim_z, device=device) * scaler ,
+                    torch.randn(num_per_sheet, 1, G.dim_z, device=device) * scaler ,
                     num_midpoints).view(-1, G.dim_z)
-    if fix_y:  # If fix y, only sample 1 z per row
-        ys = sample_1hot(num_per_sheet, num_classes)
+    
+    if fix_y: # If fix y, only sample 1 z per row
+
+        if Y_sample is None:
+            ys = sample_1hot(num_per_sheet, num_classes)
+        else: 
+            ys = Y_sample # ! vector, 1 x len ... must have 16 elements, same as num_per_sheet
+
+        ys_print = ys.detach().cpu().numpy() # ! print labels so we can backtrack
+        ys_print = '\n'.join(str(i) for i in ys_print)
         ys = G.shared(ys).view(num_per_sheet, 1, -1)
-        ys = ys.repeat(1, num_midpoints + 2,
-                       1).view(num_per_sheet * (num_midpoints + 2), -1)
+        ys = ys.repeat(1, num_midpoints + 2, 1).view(num_per_sheet * (num_midpoints + 2), -1) # ! batch x num_hidden_dim (i.e. 160 x 128)
+            
     else:
-        ys = interp(G.shared(sample_1hot(num_per_sheet, num_classes)).view(num_per_sheet, 1, -1),
-                    G.shared(sample_1hot(num_per_sheet, num_classes)).view(
-                        num_per_sheet, 1, -1),
+        if Y_pair is None:
+            ys1 = sample_1hot(num_per_sheet, num_classes)
+            ys2 = sample_1hot(num_per_sheet, num_classes)
+            for index,value in enumerate(ys1): # don't sample the same y-value for both ys1 and ys2
+                if value == ys2[index]: 
+                    temp = value + 1
+                    if temp == num_classes: # go over limit, notice index start at 0, so we use "equal"
+                        ys1[index] = value - 1 # go back
+                    else:  
+                        ys1[index] = value + 1 # if we pick 2 for ys1, then we use 3 for ys2. 
+        else: 
+            ys1 = Y_pair[0]
+            ys2 = Y_pair[1]
+
+        ys_print1 = ys1.detach().cpu().numpy() # ! print labels so we can backtrack
+        ys_print2 = ys2.detach().cpu().numpy()
+        ys_print = '\n'.join( str(i)+'\t'+str(j) for i,j in zip(ys_print1,ys_print2))
+        ys = interp(G.shared(ys1).view(num_per_sheet, 1, -1),
+                    G.shared(ys2).view(num_per_sheet, 1, -1),
                     num_midpoints).view(num_per_sheet * (num_midpoints + 2), -1)
+        
     # Run the net--note that we've already passed y through G.shared.
     if G.fp16:
         zs = zs.half()
@@ -995,6 +1071,12 @@ def interp_sheet(G, num_per_sheet, num_midpoints, num_classes, parallel,
                                                   sheet_number)
     torchvision.utils.save_image(out_ims, image_filename,
                                  nrow=num_midpoints + 2, normalize=True)
+    # ! to back track
+    print_filename = '%s/%s/%d/interp%s%d_index.txt' % (samples_root, experiment_name,
+                                                        folder_number, interp_style,
+                                                        sheet_number)
+    with open(print_filename, 'w') as out_file:
+        out_file.write(ys_print)
 
 
 # Convenience debugging function to print out gradnorms and shape from each layer
@@ -1058,7 +1140,10 @@ def name_from_config(config):
             'Gshared' if config['G_shared'] else None,
             'hier' if config['hier'] else None,
             'ema' if config['ema'] else None,
+            'v%s' % config['z_var'], # ! we will add in variance names
+            'vscale%s' % config['z_var_scaler'],
             config['name_suffix'] if config['name_suffix'] else None,
+            'scratch' if config['pretrain'] == '' else None
         ]
         if item is not None])
     # dogball

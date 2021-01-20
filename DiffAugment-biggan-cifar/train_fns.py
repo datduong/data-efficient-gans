@@ -158,11 +158,12 @@ def save_and_sample(G, D, G_ema, z_, y_, fixed_z, fixed_y,
     utils.sample_sheet(which_G,
                        classes_per_sheet=utils.classes_per_sheet_dict[config['dataset']],
                        num_classes=config['n_classes'],
-                       samples_per_class=10, parallel=config['parallel'],
+                       samples_per_class=10, parallel=config['parallel'], # ! parallel=config['parallel'] got error ???
                        samples_root=config['samples_root'],
                        experiment_name=experiment_name,
                        folder_number=state_dict['itr'],
                        z_=z_)
+    
     # Also save interp sheets
     for fix_z, fix_y in zip([False, False, True], [False, True, False]):
         utils.interp_sheet(which_G,
@@ -174,7 +175,11 @@ def save_and_sample(G, D, G_ema, z_, y_, fixed_z, fixed_y,
                            experiment_name=experiment_name,
                            folder_number=state_dict['itr'],
                            sheet_number=0,
-                           fix_z=fix_z, fix_y=fix_y, device='cuda')
+                           fix_z=fix_z, fix_y=fix_y, device='cuda',
+                           z_var=config['z_var'], 
+                           Y_sample=config['Y_sample'], 
+                           Y_pair=config['Y_pair'],
+                           z_var_scaler=config['z_var_scaler'])
 
 
 ''' This function runs the inception metrics code, checks if the results

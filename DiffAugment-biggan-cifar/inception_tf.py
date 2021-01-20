@@ -30,6 +30,8 @@ def prepare_inception_metrics(dataset, parallel, config):
         'http://d36zk2xti64re0.cloudfront.net/stylegan1/networks/metrics/inception_v3_features.pkl')
     inception_v3_softmax = dnnlib.util.load_pkl(
         'http://d36zk2xti64re0.cloudfront.net/stylegan1/networks/metrics/inception_v3_softmax.pkl')
+    # ! show current work dir so we know where the _inception_moments.pkl is saved
+    print ('\ncurrent dir for _inception_moments {}\n'.format(os.getcwd()))
     try:
         mu_real, sigma_real = dnnlib.util.load_pkl(dataset + '_inception_moments.pkl')
     except:

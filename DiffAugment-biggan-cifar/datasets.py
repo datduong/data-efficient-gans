@@ -126,6 +126,9 @@ class ImageFolder(data.Dataset):
             raise(RuntimeError("Found 0 images in subfolders of: " + root + "\n"
                                "Supported image extensions are: " + ",".join(IMG_EXTENSIONS)))
 
+        print ('see labels {}'.format(class_to_idx)) # ! just some sanity check
+        print ('len imgs {}'.format(len(imgs)))
+    
         self.root = root
         self.imgs = imgs
         self.classes = classes
@@ -157,6 +160,7 @@ class ImageFolder(data.Dataset):
         else:
             path, target = self.imgs[index]
             img = self.loader(str(path))
+            # img = self.loader( path.decode('UTF-8') ) # ! probably is using PIL by default
             if self.transform is not None:
                 img = self.transform(img)
 
