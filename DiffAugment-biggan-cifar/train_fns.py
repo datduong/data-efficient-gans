@@ -194,7 +194,7 @@ def test(G, D, GD, G_ema, z_, y_, state_dict, config, sample, get_inception_metr
     D.eval()
     D_accuracy = []
     loader = utils.get_data_loaders(
-        **{**config, 'train': False, 'use_multiepoch_sampler': False, 'load_in_mem': False})[0]
+        **{**config, 'train': False, 'use_multiepoch_sampler': False, 'load_in_mem': False, 'batch_size':4})[0]
     with torch.no_grad():
         for x, y in loader:
             D_real = GD(None, None, x=x, dy=y, policy=config['DiffAugment'])
@@ -206,7 +206,7 @@ def test(G, D, GD, G_ema, z_, y_, state_dict, config, sample, get_inception_metr
     D.eval()
     D_accuracy = []
     loader = utils.get_data_loaders(
-        **{**config, 'train': True, 'use_multiepoch_sampler': False, 'load_in_mem': False})[0]
+        **{**config, 'train': True, 'use_multiepoch_sampler': False, 'load_in_mem': False, 'batch_size':4})[0]
     with torch.no_grad():
         for x, y in loader:
             D_real = GD(None, None, x=x, dy=y, policy=config['DiffAugment'])

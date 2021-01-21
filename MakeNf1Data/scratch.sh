@@ -20,5 +20,9 @@ cd /data/duongdb/data-efficient-gans/DiffAugment-stylegan2
 
 WHICH_MODEL='/data/duongdb/data-efficient-gans/DiffAugment-stylegan2/results/00006-DiffAugment-stylegan2-SmallBigGanDataCopy2-256-batch16-4gpu-fmap8192-color-translation-cutout/network-snapshot-003000.pkl'
 OUTPUT_FILENAME='/data/duongdb/data-efficient-gans/DiffAugment-stylegan2/results/00006-DiffAugment-stylegan2-SmallBigGanDataCopy2-256-batch16-4gpu-fmap8192-color-translation-cutout/network-snapshot-003000.gif'
-python generate_gif.py --resume=$WHICH_MODEL --output=OUTPUT_FILENAME
+# python generate_gif.py --resume=$WHICH_MODEL --output=OUTPUT_FILENAME
+
+
+# python generate_gif.py --resume=$WHICH_MODEL --output=OUTPUT_FILENAME
+python run_generator.py style-mixing-example --network=$WHICH_MODEL --row-seeds=85,100,75,458,1500,2010,2020,2021 --col-seeds=55,821,1789,293 --truncation-psi=1.0
 

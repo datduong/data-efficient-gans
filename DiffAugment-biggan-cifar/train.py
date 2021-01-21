@@ -192,6 +192,20 @@ def run(config):
                                    else G),
                                z_=z_, y_=y_, config=config)
 
+    # ! show only certain images
+    if config['Y_sample'] is not None: # ! in case we do joint-training 
+        config['Y_sample'] = torch.LongTensor ( np.array ( [ int(k) for k in config['Y_sample'].split(',') ] ) ).to('cuda') 
+        config['Y_sample'].requires_grad = False
+        
+    if config['Y_pair'] is not None: 
+        config['Y_pair'] = config['Y_pair'].split(' ') # 2 strings 
+        print (config['Y_pair'])
+        config['Y_pair'][0] = torch.LongTensor ( np.array ( [int(k) for k in config['Y_pair'][0].split(',')] ) ).to('cuda')
+        config['Y_pair'][1] = torch.LongTensor ( np.array ( [int(k) for k in config['Y_pair'][1].split(',')] ) ).to('cuda')
+        config['Y_pair'][0].requires_grad = False
+        config['Y_pair'][1].requires_grad = False
+
+    
     print('Beginning training at epoch %d...' % state_dict['epoch'])
     # Train for specified number of epochs, although we mostly track G iterations.
     for epoch in range(state_dict['epoch'], config['num_epochs']):

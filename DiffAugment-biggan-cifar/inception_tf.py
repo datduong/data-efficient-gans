@@ -38,7 +38,7 @@ def prepare_inception_metrics(dataset, parallel, config):
         print('Calculating inception features for the training set...')
         loader = utils.get_data_loaders(
             **{**config, 'train': False, 'mirror_augment': False,
-            'use_multiepoch_sampler': False, 'load_in_mem': False, 'pin_memory': False})[0]
+            'use_multiepoch_sampler': False, 'load_in_mem': False, 'pin_memory': False, 'batch_size':4})[0]
         pool = []
         num_gpus = torch.cuda.device_count()
         for images, _ in loader:

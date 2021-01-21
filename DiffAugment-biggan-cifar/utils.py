@@ -399,6 +399,14 @@ def prepare_parser():
         help='Iteration interval for logging singular values '
         ' (default: %(default)s)')
 
+    
+    parser.add_argument(
+        '--Y_sample', type=str, default=None, # ! for plotting specific labels
+        help='a vector of string "1,2,3"' )
+    parser.add_argument(
+        '--Y_pair', type=str, default=None,
+        help='a vector of string "1,2,3\t3,2,1"' )
+  
     return parser
 
 # Arguments for sample.py; not presently used in train.py
@@ -460,7 +468,7 @@ root_dict = {'I32': 'train', 'I32_hdf5': 'ILSVRC32.hdf5',
              'I128': 'train', 'I128_hdf5': 'ILSVRC128.hdf5',
              'I256': 'train', 'I256_hdf5': 'ILSVRC256.hdf5',
              'C10': 'cifar', 'C100': 'cifar',
-             'NF1BeforeAfter': 'NF1BeforeAfter25Img', 'NF1BeforeAfter_hdf5': 'ILSVRC128.hdf5'}
+             'NF1BeforeAfter': 'NF1BeforeAfter100Img', 'NF1BeforeAfter_hdf5': 'ILSVRC128.hdf5'}
 nclass_dict = {'I32': 1000, 'I32_hdf5': 1000,
                'I64': 1000, 'I64_hdf5': 1000,
                'I128': 1000, 'I128_hdf5': 1000,
@@ -598,7 +606,9 @@ def get_data_loaders(dataset, data_root=None, mirror_augment=False, batch_size=6
     else:
         if mirror_augment:
             print('Data will be augmented...')
-            train_transform = [transforms.RandomHorizontalFlip()]
+            train_transform = [transforms.RandomHorizontalFlip(), 
+                               transforms.RandomVerticalFlip() # ! add vertical flip?? why not.
+                               ]
         else:
             print('Data will not be augmented...')
             train_transform = []
