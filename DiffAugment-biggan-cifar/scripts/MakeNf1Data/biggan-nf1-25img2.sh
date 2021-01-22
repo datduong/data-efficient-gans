@@ -18,10 +18,10 @@ module load gcc/8.3.0
 
 cd /data/duongdb/data-efficient-gans/DiffAugment-biggan-cifar
 
-batchsize=16 #128
+batchsize=16 # 128 # ! fails when we run multiple Gpus... strange... doesn't have problem with original github, what did they change?
 arch_size=96 
 rootname=/data/duongdb/NF1BeforeAfter01202021/Crop/
-dataset_name=NF1BeforeAfter
+dataset_name='NF1BeforeAfter+5'
 
 # --parallel has problem when calling sample??
 
@@ -45,12 +45,12 @@ python3 train.py \
 --test_every 20 --save_every 20 --num_best_copies 3 --num_save_copies 2 --seed 0 \
 --use_multiepoch_sampler \
 --pretrain /data/duongdb/BigGAN-PyTorch/100k \
---experiment_name DiffAugment-Nf1.100img-vz2 \
+--experiment_name 'DiffAugment-Nf1.100img+5' \
 --DiffAugment translation,cutout --mirror_augment \
 --which_best FID \
---num_inception_images 50 \
+--num_inception_images 200 \
 --z_var 1 \
---z_var_scaler 2 \
+--z_var_scaler 1 \
 --parallel \
 --Y_sample '1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0' \
 --Y_pair '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0'

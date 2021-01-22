@@ -456,25 +456,32 @@ dset_dict = {'I32': dset.ImageFolder, 'I64': dset.ImageFolder,
              'I32_hdf5': dset.ILSVRC_HDF5, 'I64_hdf5': dset.ILSVRC_HDF5,
              'I128_hdf5': dset.ILSVRC_HDF5, 'I256_hdf5': dset.ILSVRC_HDF5,
              'C10': dset.CIFAR10, 'C100': dset.CIFAR100,
-             'NF1BeforeAfter': dset.ImageFolder, 'NF1BeforeAfter_hdf5': dset.ILSVRC_HDF5}
+             'NF1BeforeAfter': dset.ImageFolder, 'NF1BeforeAfter_hdf5': dset.ILSVRC_HDF5,
+             'NF1BeforeAfter+5': dset.ImageFolder, 'NF1BeforeAfter+5_hdf5': dset.ILSVRC_HDF5
+             }
 imsize_dict = {'I32': 32, 'I32_hdf5': 32,
                'I64': 64, 'I64_hdf5': 64,
                'I128': 128, 'I128_hdf5': 128,
                'I256': 256, 'I256_hdf5': 256,
                'C10': 32, 'C100': 32,
-               'NF1BeforeAfter': 128, 'NF1BeforeAfter_hdf5': 128}
+               'NF1BeforeAfter': 128, 'NF1BeforeAfter_hdf5': 128,
+               'NF1BeforeAfter+5': 128, 'NF1BeforeAfter+5_hdf5': 128
+               }
 root_dict = {'I32': 'train', 'I32_hdf5': 'ILSVRC32.hdf5',
              'I64': 'train', 'I64_hdf5': 'ILSVRC64.hdf5',
              'I128': 'train', 'I128_hdf5': 'ILSVRC128.hdf5',
              'I256': 'train', 'I256_hdf5': 'ILSVRC256.hdf5',
              'C10': 'cifar', 'C100': 'cifar',
-             'NF1BeforeAfter': 'NF1BeforeAfter100Img', 'NF1BeforeAfter_hdf5': 'ILSVRC128.hdf5'}
+             'NF1BeforeAfter': 'NF1BeforeAfter100Img', 'NF1BeforeAfter_hdf5': 'ILSVRC128.hdf5',
+             'NF1BeforeAfter+5': 'NF1BeforeAfter100Img+5', 'NF1BeforeAfter+5_hdf5': 'ILSVRC128.hdf5'
+             }
 nclass_dict = {'I32': 1000, 'I32_hdf5': 1000,
                'I64': 1000, 'I64_hdf5': 1000,
                'I128': 1000, 'I128_hdf5': 1000,
                'I256': 1000, 'I256_hdf5': 1000,
                'C10': 10, 'C100': 100,
-               'NF1BeforeAfter': 2, 'NF1BeforeAfter_hdf5': 2 # ! 2 labels for before and after
+               'NF1BeforeAfter': 2, 'NF1BeforeAfter_hdf5': 2, # ! 2 labels for before and after
+               'NF1BeforeAfter+5': 8, 'NF1BeforeAfter+5_hdf5': 8
                }
 # Number of classes to put per sample sheet
 classes_per_sheet_dict = {'I32': 50, 'I32_hdf5': 50,
@@ -482,7 +489,9 @@ classes_per_sheet_dict = {'I32': 50, 'I32_hdf5': 50,
                           'I128': 20, 'I128_hdf5': 20,
                           'I256': 20, 'I256_hdf5': 20,
                           'C10': 10, 'C100': 100,
-                          'NF1BeforeAfter': 2, 'NF1BeforeAfter_hdf5': 2}
+                          'NF1BeforeAfter': 2, 'NF1BeforeAfter_hdf5': 2,
+                          'NF1BeforeAfter+5': 8, 'NF1BeforeAfter+5_hdf5': 8
+                          }
 activation_dict = {'inplace_relu': nn.ReLU(inplace=True),
                    'relu': nn.ReLU(inplace=False),
                    'ir': nn.ReLU(inplace=True), }
