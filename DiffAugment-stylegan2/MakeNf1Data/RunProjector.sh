@@ -14,20 +14,28 @@ module load gcc/8.3.0
 
 cd /data/duongdb/data-efficient-gans/DiffAugment-stylegan2 
 
-model_path='/data/duongdb/data-efficient-gans/DiffAugment-stylegan2/results/00009-DiffAugment-stylegan2-SmallBigGanDataCopy2-256-batch16-2gpu-fmap8192-color-translation-cutout/network-snapshot-001306.pkl'
+model_path='/data/duongdb/data-efficient-gans/DiffAugment-stylegan2/results/00009-DiffAugment-stylegan2-SmallBigGanDataCopy2-256-batch16-2gpu-fmap8192-color-translation-cutout/network-snapshot-001607.pkl'
 
+
+# ! copy files over ??
+# before 22, 37
+# let's try all the after, so 2*100=200 cases? ehhh. whatever. 
 maindir=/data/duongdb/NF1BeforeAfter01202021/Crop/ 
-originalselect=$maindir/ImgRunProjectorInput
+for imgtype in Before after
+do 
+  originalselect=$maindir/ImgRunProjectorInput$imgtype
+  outdir=$maindir/ImgRunProjectorOutput$imgtype
+  python3 dataset_tool_gan2.py create_from_images $outdir $originalselect --resolution 256 --shuffle 0
+done 
 
-outdir=$maindir/ImgRunProjectorOutput
-
-# before 31, after 37
-
-python3 dataset_tool_gan2.py create_from_images $outdir $originalselect --resolution 256 --shuffle 0
+#----------------------------------------------------------------------------
 
 # ! there's some problem with the @run_projector in this new github, so we use original stylegan2
 cd /data/duongdb/stylegan2 
-tot_aligned_imgs=2
-python3 run_projector.py project-real-images --network=$model_path --dataset=ImgRunProjectorOutput --data-dir=$maindir --num-images=$tot_aligned_imgs --num-snapshots 500
+tot_aligned_imgs=104 # ! change this number
+python3 run_projector.py project-real-images --network=$model_path --dataset=ImgRunProjectorOutput --data-dir=$maindir --num-images=$tot_aligned_imgs --num-snapshots 4
 
+#----------------------------------------------------------------------------
+
+cd /data/duongdb/data-efficient-gans/DiffAugment-stylegan2 
 

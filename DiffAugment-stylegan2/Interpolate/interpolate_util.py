@@ -45,13 +45,14 @@ def generate_image_random(rand_seed, Gs, noise_vars, Gs_kwargs):
     rnd = np.random.RandomState(rand_seed)
     z = rnd.randn(1, *Gs.input_shape[1:]) # ! a random vector which will be passed to DNN to be dlatent in https://github.com/Puzer/stylegan-encoder
     tflib.set_vars({var: rnd.randn(*var.shape.as_list()) for var in noise_vars})
-    images = Gs.run(z, None, **Gs_kwargs)
+    images = Gs.run(z, None, is_validation=True, **Gs_kwargs)
     return images, z
 
 
 # Generate images given a latent code ( vector of size [1, 512] )
 def generate_image_from_z(z, Gs, Gs_kwargs):
-    images = Gs.run(z, None, **Gs_kwargs)
+    # Gs.run(grid_latents, grid_labels, is_validation=True, minibatch_size=sched.minibatch_gpu)
+    images = Gs.run(z, None, is_validation=True, **Gs_kwargs)
     return images
 
 
@@ -112,18 +113,13 @@ def generate_image_from_projected_latents(latent_vector, Gs, Gs_kwargs):
 
 def get_final_latents(latent_path):
     
-    all_results = list(Path(latent_path).iterdir())
-    all_results.sort()
-    
-    last_result = all_results[-1]
-
-    latent_files = [x for x in last_result.iterdir() if 'final_latent_code' in x.name]
+    latent_files = [x for x in os.listdir(latent_path) if 'final_latent_code' in x]
     latent_files.sort()
     
     all_final_latents = []
     
     for file in latent_files:
-        with open(file, mode='rb') as latent_pickle:
+        with open(os.path.join(latent_path,file), mode='rb') as latent_pickle:
             all_final_latents.append(pickle.load(latent_pickle))
     
     return all_final_latents, latent_files

@@ -45,8 +45,8 @@ python3 train.py \
 --test_every 20 --save_every 20 --num_best_copies 3 --num_save_copies 2 --seed 0 \
 --use_multiepoch_sampler \
 --pretrain /data/duongdb/BigGAN-PyTorch/100k \
---experiment_name 'DiffAugment-Nf1.100img+5' \
---DiffAugment translation,cutout --mirror_augment \
+--experiment_name 'DiffAugment-cr-Nf1.100img+5' \
+--DiffAugment cutout --CR 10 --mirror_augment \
 --which_best FID \
 --num_inception_images 200 \
 --z_var 1 \
