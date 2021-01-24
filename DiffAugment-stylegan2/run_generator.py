@@ -4,13 +4,16 @@
 # To view a copy of this license, visit
 # https://nvlabs.github.io/stylegan2/license.html
 
+import os
+import re
+import sys
+import pickle
+
 import argparse
 import numpy as np
 import PIL.Image
 import dnnlib
 import dnnlib.tflib as tflib
-import re
-import sys
 
 from dnnlib import EasyDict
 from training import dataset
@@ -92,6 +95,63 @@ def style_mixing_example(network_pkl, row_seeds, col_seeds, truncation_psi, col_
                 key = (row_seed, row_seed)
             canvas.paste(PIL.Image.fromarray(image_dict[key], 'RGB'), (W * col_idx, H * row_idx))
     canvas.save(dnnlib.make_run_dir_path('grid.png'))
+
+
+#----------------------------------------------------------------------------
+
+def style_mixing_example_from_latentz(latent_pickle, network_pkl, row_seeds, col_seeds, truncation_psi, col_styles, minibatch_size=4):
+    print('Loading networks from "%s"...' % network_pkl)
+    _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
+    w_avg = Gs.get_var('dlatent_avg') # [component]
+
+    Gs_syn_kwargs = dnnlib.EasyDict()
+    Gs_syn_kwargs.output_transform = dict(func=tflib.convert_images_to_uint8, nchw_to_nhwc=True)
+    Gs_syn_kwargs.randomize_noise = False
+    Gs_syn_kwargs.minibatch_size = minibatch_size
+
+    print('Generating W vectors...')
+    all_seeds = list(set(row_seeds + col_seeds))
+    # @all_z is random numbers
+    # all_z = np.stack([np.random.RandomState(seed).randn(*Gs.input_shape[1:]) for seed in all_seeds]) # [minibatch, component]
+    latent_pickle = pickle.load( open( os.path.join(latent_pickle),'rb') ) 
+    all_z = latent_pickle[0] # this is # [minibatch, component], ie. 16x512
+    all_w = Gs.components.mapping.run(all_z, None) # [minibatch, layer, component]
+    # @all_w is also random numbers
+    all_w = w_avg + (all_w - w_avg) * truncation_psi # [minibatch, layer, component]
+    # @all_w now will not be too far from @w_avg
+    w_dict = {seed: w for seed, w in zip(all_seeds, list(all_w))} # [layer, component]
+
+    print('Generating images...')
+    all_images = Gs.components.synthesis.run(all_w, **Gs_syn_kwargs) # [minibatch, height, width, channel]
+    image_dict = {(seed, seed): image for seed, image in zip(all_seeds, list(all_images))}
+
+    print('Generating style-mixed images...')
+    for row_seed in row_seeds:
+        for col_seed in col_seeds:
+            w = w_dict[row_seed].copy()
+            w[col_styles] = w_dict[col_seed][col_styles]
+            image = Gs.components.synthesis.run(w[np.newaxis], **Gs_syn_kwargs)[0]
+            image_dict[(row_seed, col_seed)] = image
+
+    print('Saving images...')
+    for (row_seed, col_seed), image in image_dict.items():
+        PIL.Image.fromarray(image, 'RGB').save(dnnlib.make_run_dir_path('%d-%d.png' % (row_seed, col_seed)))
+
+    print('Saving image grid...')
+    _N, _C, H, W = Gs.output_shape
+    canvas = PIL.Image.new('RGB', (W * (len(col_seeds) + 1), H * (len(row_seeds) + 1)), 'black')
+    for row_idx, row_seed in enumerate([None] + row_seeds):
+        for col_idx, col_seed in enumerate([None] + col_seeds):
+            if row_seed is None and col_seed is None:
+                continue
+            key = (row_seed, col_seed)
+            if row_seed is None:
+                key = (col_seed, col_seed)
+            if col_seed is None:
+                key = (row_seed, row_seed)
+            canvas.paste(PIL.Image.fromarray(image_dict[key], 'RGB'), (W * col_idx, H * row_idx))
+    canvas.save(dnnlib.make_run_dir_path('grid.png'))
+
 
 #----------------------------------------------------------------------------
 
